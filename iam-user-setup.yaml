@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  IAM Setup: Secret password, IAM groups, and users with S3/EC2 read-only access.
+
+Resources:
+
+  # Secrets Manager secret for one-time password
+  UserPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: IAMUserOneTimePassword
+      Description: Temporary password for IAM users
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "placeholder"}'
+        GenerateStringKey: "password"
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+
+  # IAM Group for S3 with S3 read-only policy
+  S3UserGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: S3UserGroup
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+  # IAM Group for EC2 with EC2 read-only policy
+  EC2UserGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: EC2UserGroup
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+
+  # IAM User for S3
+  S3User:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: s3-user
+      Groups:
+        - !Ref S3UserGroup
+      LoginProfile:
+        Password: !Join ['', [ '{{resolve:secretsmanager:', !Ref UserPasswordSecret, ':SecretString:password}}' ]]
+        PasswordResetRequired: true
+
+  # IAM User for EC2
+  EC2User:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: ec2-user
+      Groups:
+        - !Ref EC2UserGroup
+      LoginProfile:
+        Password: !Join ['', [ '{{resolve:secretsmanager:', !Ref UserPasswordSecret, ':SecretString:password}}' ]]
+        PasswordResetRequired: true
