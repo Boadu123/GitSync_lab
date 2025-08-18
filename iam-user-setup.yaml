@@ -37,10 +37,10 @@ Resources:
         - !Ref EC2UserGroupBenedict
       LoginProfile:
         # Use the Fn::Sub on the secret ARN to resolve the password
-        Password: !Sub '{{resolve:secretsmanager:${UserPasswordSecretIbra}}}'
+        Password: !Sub '{{resolve:secretsmanager:${UserPasswordSecretBenedict}}}'
         PasswordResetRequired: true
 
-  S3UserIbra:
+  S3UserBenedict:
     Type: 'AWS::IAM::User'
     DependsOn:
       - UserPasswordSecretBenedict
@@ -51,5 +51,5 @@ Resources:
         - !Ref S3UserGroupBenedict
       LoginProfile:
         # Use the Fn::Sub on the secret ARN to resolve the password
-        Password: !Sub '{{resolve:secretsmanager:${UserPasswordSecretIbra}}}'
+        Password: !Sub '{{resolve:secretsmanager:${UserPasswordSecretBenedict}}}'
         PasswordResetRequired: true
