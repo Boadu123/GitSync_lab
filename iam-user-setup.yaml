@@ -1,54 +1,55 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: "IAM Lab: Users, Groups, and One-Time Password via Secrets Manager (Git sync)"
+Description: >
+  Creates IAM Users, Groups, and a temporary password in Secrets Manager
+  for a lab on automated IAM resource provisioning.
+
 Resources:
-  OneTimePassword:
-    Type: AWS::SecretsManager::Secret
+  UserPasswordSecretBenedict:
+    Type: 'AWS::SecretsManager::Secret'
     Properties:
-      Name: !Sub "${AWS::StackName}/one-time-password"
-      Description: "One-time console password for lab users (JSON key: password)"
+      Description: 'Temporary password for IAM users'
       GenerateSecretString:
-        SecretStringTemplate: '{"note":"shared one-time password"}'
-        GenerateStringKey: password
         PasswordLength: 16
-        RequireEachIncludedType: true
-  S3ReadOnlyGroup:
-    Type: AWS::IAM::Group
+        ExcludePunctuation: true
+
+  EC2UserGroupBenedict:
+    Type: 'AWS::IAM::Group'
     Properties:
-      GroupName: !Sub "${AWS::StackName}-S3ReadOnly"
+      GroupName: EC2GroupBenedict
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-        - arn:aws:iam::aws:policy/IAMUserChangePassword
-  EC2ReadOnlyGroup:
-    Type: AWS::IAM::Group
+        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
+
+  S3UserGroupBenedict:
+    Type: 'AWS::IAM::Group'
     Properties:
-      GroupName: !Sub "${AWS::StackName}-EC2ReadOnly"
+      GroupName: S3GroupBenedict
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
-        - arn:aws:iam::aws:policy/IAMUserChangePassword
-  S3User:
-    Type: AWS::IAM::User
+        - 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'
+
+  EC2UserBenedict:
+    Type: 'AWS::IAM::User'
+    DependsOn:
+      - UserPasswordSecretBenedict
+      - EC2UserGroupBenedict
     Properties:
-      UserName: bens3-user
-      Path: /
+      UserName: ec2-user-benedict
       Groups:
-        - !Ref S3ReadOnlyGroup
+        - !Ref EC2UserGroupBenedict
       LoginProfile:
-        Password: !Sub "{{resolve:secretsmanager:${OneTimePassword}:SecretString:password}}"
+        # Use the Fn::Sub on the secret ARN to resolve the password
+        Password: !Sub '{{resolve:secretsmanager:${UserPasswordSecretIbra}}}'
         PasswordResetRequired: true
-  EC2User:
-    Type: AWS::IAM::User
+
+  S3UserIbra:
+    Type: 'AWS::IAM::User'
+    DependsOn:
+      - UserPasswordSecretBenedict
+      - S3UserGroupBenedict
     Properties:
-      UserName: benec2-user
-      Path: /
+      UserName: s3-user-benedict
       Groups:
-        - !Ref EC2ReadOnlyGroup
+        - !Ref S3UserGroupBenedict
       LoginProfile:
-        Password: !Sub "{{resolve:secretsmanager:${OneTimePassword}:SecretString:password}}"
+        # Use the Fn::Sub on the secret ARN to resolve the password
+        Password: !Sub '{{resolve:secretsmanager:${UserPasswordSecretIbra}}}'
         PasswordResetRequired: true
-Outputs:
-  SecretArn:
-    Description: "Secrets Manager ARN that stores the one-time password (key: password)"
-    Value: !Ref OneTimePassword
-  AccountSignInURL:
-    Description: "AWS Console sign-in URL for this account"
-    Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
