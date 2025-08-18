@@ -36,7 +36,7 @@ Resources:
   S3User:
     Type: AWS::IAM::User
     Properties:
-      UserName: s3-user
+      UserName: ben-s3
       Groups:
         - !Ref S3UserGroup
       LoginProfile:
@@ -47,7 +47,7 @@ Resources:
   EC2User:
     Type: AWS::IAM::User
     Properties:
-      UserName: ec2-user
+      UserName: ben-ec2
       Groups:
         - !Ref EC2UserGroup
       LoginProfile:
