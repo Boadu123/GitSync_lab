@@ -1,55 +1,54 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: >
-  IAM Setup: Secret password, IAM groups, and users with S3/EC2 read-only access.
-
+Description: "IAM Lab: Users, Groups, and One-Time Password via Secrets Manager (Git sync)"
 Resources:
-
-  # Secrets Manager secret for one-time password
-  UserPasswordSecret:
+  OneTimePassword:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: IAMUserOneTimePassword
-      Description: Temporary password for IAM users
+      Name: !Sub "${AWS::StackName}/one-time-password"
+      Description: "One-time console password for lab users (JSON key: password)"
       GenerateSecretString:
-        SecretStringTemplate: '{"username": "placeholder"}'
-        GenerateStringKey: "password"
+        SecretStringTemplate: '{"note":"shared one-time password"}'
+        GenerateStringKey: password
         PasswordLength: 16
-        ExcludeCharacters: '"@/\'
-
-  # IAM Group for S3 with S3 read-only policy
-  S3UserGroup:
+        RequireEachIncludedType: true
+  S3ReadOnlyGroup:
     Type: AWS::IAM::Group
     Properties:
-      GroupName: S3UserGroup
+      GroupName: !Sub "${AWS::StackName}-S3ReadOnly"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-
-  # IAM Group for EC2 with EC2 read-only policy
-  EC2UserGroup:
+        - arn:aws:iam::aws:policy/IAMUserChangePassword
+  EC2ReadOnlyGroup:
     Type: AWS::IAM::Group
     Properties:
-      GroupName: EC2UserGroup
+      GroupName: !Sub "${AWS::StackName}-EC2ReadOnly"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
-
-  # IAM User for S3
+        - arn:aws:iam::aws:policy/IAMUserChangePassword
   S3User:
     Type: AWS::IAM::User
     Properties:
-      UserName: ben-s3
+      UserName: bens3-user
+      Path: /
       Groups:
-        - !Ref S3UserGroup
+        - !Ref S3ReadOnlyGroup
       LoginProfile:
-        Password: !Join ['', [ '{{resolve:secretsmanager:', !Ref UserPasswordSecret, ':SecretString:password}}' ]]
+        Password: !Sub "{{resolve:secretsmanager:${OneTimePassword}:SecretString:password}}"
         PasswordResetRequired: true
-
-  # IAM User for EC2
   EC2User:
     Type: AWS::IAM::User
     Properties:
-      UserName: ben-ec2
+      UserName: benec2-user
+      Path: /
       Groups:
-        - !Ref EC2UserGroup
+        - !Ref EC2ReadOnlyGroup
       LoginProfile:
-        Password: !Join ['', [ '{{resolve:secretsmanager:', !Ref UserPasswordSecret, ':SecretString:password}}' ]]
+        Password: !Sub "{{resolve:secretsmanager:${OneTimePassword}:SecretString:password}}"
         PasswordResetRequired: true
+Outputs:
+  SecretArn:
+    Description: "Secrets Manager ARN that stores the one-time password (key: password)"
+    Value: !Ref OneTimePassword
+  AccountSignInURL:
+    Description: "AWS Console sign-in URL for this account"
+    Value: !Sub "https://${AWS::AccountId}.signin.aws.amazon.com/console"
